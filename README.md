@@ -24,6 +24,7 @@ Supported encodings:
 
 - Please read [the SMPP Specification Version 5](docs/SMPP_v5.pdf) first. [pdu](pdu) is not limited to any value range.
 - If you do not like the default [conn.go](conn.go) implementation, you can easily replace it.
+- [Device-specific Caveats](docs/device-specific-caveats.md)
 
 ## Example
 

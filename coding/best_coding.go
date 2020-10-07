@@ -1,19 +1,10 @@
 package coding
 
 import (
-	"fmt"
 	. "unicode"
 
 	"github.com/NiceLabs/go-smpp/coding/gsm7bit"
-	. "golang.org/x/text/encoding"
 )
-
-type DataCoding byte
-
-func (c DataCoding) GoString() string   { return c.String() }
-func (c DataCoding) String() string     { return fmt.Sprintf("%08b", byte(c)) }
-func (c DataCoding) Encoding() Encoding { return encodingMap[c] }
-func (c DataCoding) Splitter() Splitter { return splitterMap[c] }
 
 func BestCoding(input string) DataCoding {
 	switch {
