@@ -2,7 +2,6 @@ package smpp
 
 import (
 	"context"
-	"errors"
 	"io"
 	"math/rand"
 	"net"
@@ -72,7 +71,7 @@ func (c *Conn) Submit(ctx context.Context, packet Responsable) (resp interface{}
 	defer delete(c.pending, sequence)
 	select {
 	case <-c.ctx.Done():
-		err = c.ctx.Err()
+		err = ErrConnectionClosed
 	case <-ctx.Done():
 		err = ctx.Err()
 	case resp = <-returns:
@@ -83,7 +82,7 @@ func (c *Conn) Submit(ctx context.Context, packet Responsable) (resp interface{}
 func (c *Conn) Send(packet interface{}) (err error) {
 	sequence := ReadSequence(packet)
 	if sequence == 0 || sequence < 0 {
-		err = errors.New("smpp: invalid sequence")
+		err = ErrInvalidSequence
 		return
 	}
 	if c.WriteTimeout > 0 {
@@ -91,6 +90,9 @@ func (c *Conn) Send(packet interface{}) (err error) {
 	}
 	if err == nil {
 		_, err = Marshal(c.parent, packet)
+	}
+	if err == io.EOF {
+		err = ErrConnectionClosed
 	}
 	return
 }
@@ -101,8 +103,7 @@ func (c *Conn) EnquireLink(tick time.Duration, timeout time.Duration) {
 	sendEnquireLink := func() {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
-		_, err := c.Submit(ctx, new(EnquireLink))
-		if err == context.DeadlineExceeded || err == context.Canceled {
+		if _, err := c.Submit(ctx, new(EnquireLink)); err != nil {
 			ticker.Stop()
 			_ = c.Close()
 		}
@@ -117,12 +118,13 @@ func (c *Conn) Close() (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	defer c.cancel()
-	_, err = c.Submit(ctx, new(Unbind))
-	if err == nil {
+	if _, err = c.Submit(ctx, new(Unbind)); err == nil {
 		close(c.receiveQueue)
 		err = c.parent.Close()
 	}
 	return
 }
 
-func (c *Conn) PDU() <-chan interface{} { return c.receiveQueue }
+func (c *Conn) PDU() <-chan interface{} {
+	return c.receiveQueue
+}

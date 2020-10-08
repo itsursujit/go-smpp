@@ -9,6 +9,7 @@ import (
 	"net"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/NiceLabs/go-smpp"
@@ -16,6 +17,7 @@ import (
 )
 
 var configure = new(Configuration)
+var mutex sync.Mutex
 
 func init() {
 	configFile, err := ioutil.ReadFile("configure.json")
@@ -53,9 +55,6 @@ func fillAccount(account *Account) {
 	if account.Password == "" {
 		account.Password = configure.DefaultAccount.Password
 	}
-	if account.BindType == "" {
-		account.BindType = configure.DefaultAccount.BindType
-	}
 }
 
 //goland:noinspection GoUnhandledErrorResult
@@ -69,33 +68,12 @@ func connect(device Account, hook func(*Payload)) {
 	conn.ReadTimeout = time.Second * 30
 	go conn.Watch()
 	defer conn.Close()
-	var request pdu.Responsable
-	switch device.BindType {
-	case "", "receiver":
-		request = &pdu.BindReceiver{
-			SystemID:   device.SystemID,
-			Password:   device.Password,
-			SystemType: device.SystemType,
-			Version:    pdu.SMPPVersion34,
-		}
-	case "transceiver":
-		request = &pdu.BindTransceiver{
-			SystemID:   device.SystemID,
-			Password:   device.Password,
-			SystemType: device.SystemType,
-			Version:    pdu.SMPPVersion34,
-		}
-	case "transmitter":
-		request = &pdu.BindTransmitter{
-			SystemID:   device.SystemID,
-			Password:   device.Password,
-			SystemType: device.SystemType,
-			Version:    pdu.SMPPVersion34,
-		}
-	default:
-		log.Fatalln("unsupported bind type")
-	}
-	resp, err := conn.Submit(ctx, request)
+	resp, err := conn.Submit(ctx, &pdu.BindTransceiver{
+		SystemID:   device.SystemID,
+		Password:   device.Password,
+		SystemType: device.SystemType,
+		Version:    pdu.SMPPVersion34,
+	})
 	if err != nil {
 		log.Fatalln(err)
 	} else if status := pdu.ReadCommandStatus(resp); status != 0 {
@@ -136,6 +114,8 @@ func connect(device Account, hook func(*Payload)) {
 
 //goland:noinspection GoUnhandledErrorResult
 func runProgram(message *Payload) {
+	mutex.Lock()
+	defer mutex.Unlock()
 	log.Printf("%s @ %s | %s -> %s", message.SMSC, message.SystemID, message.Source, message.Target)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*15)
 	defer cancel()
