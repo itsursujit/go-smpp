@@ -5,10 +5,11 @@ import (
 )
 
 var (
-	ErrInvalidPDU           = errors.New("pdu: payload is invalid")
 	ErrCannotRead           = errors.New("pdu: cannot read")
 	ErrUnmarshalPDUFailed   = errors.New("pdu: unmarshal pdu failed")
-	ErrUnknownCommandID     = errors.New("pdu: unknown command id")
+	ErrInvalidCommandLength = CommandStatus(0x00000002)
+	ErrInvalidCommandID     = CommandStatus(0x00000003)
+	ErrUnknownError         = CommandStatus(0x000000FF)
 	ErrUnknownDataCoding    = errors.New("pdu: unknown data coding")
 	ErrInvalidSequence      = errors.New("pdu: invalid sequence (should be 31 bit integer)")
 	ErrItemTooMany          = errors.New("pdu: item too many")
