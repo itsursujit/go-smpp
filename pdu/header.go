@@ -11,10 +11,6 @@ type CommandID uint32
 // CommandStatus see SMPP v5, section 4.7.6 (116p)
 type CommandStatus uint32
 
-func (c CommandStatus) Error() string {
-	return c.String()
-}
-
 type Header struct {
 	CommandLength uint32
 	CommandID     CommandID
